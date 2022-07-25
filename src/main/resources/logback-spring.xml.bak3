@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="APP_NAME" value="springboot-logback-elk-demo"/>
+    <property name="LOG_PATH" value="./logs/" />
+    <!-- 日志文件名，如果外部已经定义了LOG_FILE，则使用使用外部的LOG_FILE，否则使用默认值：${APP_NAME} -->
+    <property name="LOG_FILE_NAME" value="springboot-logback-elk-demo" />
+    <property name="MAX_FILE_SIZE" value="200MB" />
+    <property name="MAX_HISTORY" value="120" />
+    <property name="ERROR_LOG_FILE_NAME" value="${LOG_FILE_NAME}.error" />
+
+    <contextName>${APP_NAME}</contextName>
+
+    <!-- 不丢失日志.默认的,如果队列的80%已满,则会丢弃TRACE、DEBUG、INFO级别的日志 -->
+    <property name="DISCARDING_THRESHOLD" value="0" />
+    <property name="INCLUDE_CALLER_DATA" value="true" />
+
+    <!--输出到控制台 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <!--此日志appender是为开发使用，只配置最底级别，控制台输出的日志级别是大于或等于此级别的日志信息 -->
+        <!-- <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+           <level>debug</level>
+        </filter> -->
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{56}.%method:%L - %msg%n</pattern>
+            <!-- 设置字符集 -->
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 时间滚动输出 level为 INFO 日志 -->
+    <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 正在记录的日志文件的路径及文件名 -->
+        <file>${LOG_PATH}/${LOG_FILE_NAME}.log</file>
+        <!--日志文件输出格式 -->
+        <encoder>
+            <pattern> %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{56}.%method:%L - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <!-- 日志记录器的滚动策略，按日期，按大小记录 -->
+        <rollingPolicy
+                class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/%d{yyyyMMdd}/${LOG_FILE_NAME}.%i.log
+            </fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <totalSizeCap>50GB</totalSizeCap>
+        </rollingPolicy>
+        <!-- 此日志文件只记录info级别的 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <!-- 时间滚动输出 level为 ERROR 日志 -->
+    <appender name="FILE_ERROR"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 正在记录的日志文件的路径及文件名 -->
+        <file>${LOG_PATH}/${ERROR_LOG_FILE_NAME}.log</file>
+        <!--日志文件输出格式 -->
+        <encoder>
+            <pattern> %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{56}.%method:%L - %msg%n</pattern>
+            <charset>UTF-8</charset> <!-- 此处设置字符集 -->
+        </encoder>
+        <!-- 日志记录器的滚动策略，按日期，按大小记录 -->
+        <rollingPolicy
+                class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/%d{yyyyMMdd}/${ERROR_LOG_FILE_NAME}.%i.log
+            </fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <totalSizeCap>50GB</totalSizeCap>
+        </rollingPolicy>
+        <!-- 此日志文件只记录ERROR级别的 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <!-- 异步输出日志 -->
+    <appender name="ASYNC_FILE"
+              class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>${DISCARDING_THRESHOLD}</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <includeCallerData>${INCLUDE_CALLER_DATA}</includeCallerData>
+        <!-- 添加附加的appender,最多只能添加一个 -->
+        <appender-ref ref="FILE_INFO" />
+    </appender>
+
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <!--可以访问的logstash日志收集端口-->
+        <destination>192.168.227.70:4560</destination>
+        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+
+
+    <springProfile name="dev">
+<!--        <logger name="com.alibaba.cloud.nacos.client" level="debug" />-->
+<!--        <logger name="pers.wwz.study" level="debug" />-->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+<!--            <appender-ref ref="ASYNC_FILE" />-->
+            <appender-ref ref="FILE_ERROR" />
+            <appender-ref ref="LOGSTASH" />
+        </root>
+    </springProfile>
+
+    <springProfile name="test">
+<!--        <logger name="com.alibaba.nacos.client.naming" level="WARN" />-->
+<!--        <logger name="pers.wwz.study" level="debug" />-->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+<!--            <appender-ref ref="ASYNC_FILE" />-->
+            <appender-ref ref="FILE_ERROR" />
+            <appender-ref ref="LOGSTASH" />
+        </root>
+    </springProfile>
+
+    <springProfile name="sit">
+<!--        <logger name="org.springframework" level="WARN" />-->
+<!--        <logger name="com.alibaba.nacos.client.naming" level="WARN" />-->
+<!--        <logger name="pers.wwz.study" level="info" />-->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+<!--            <appender-ref ref="ASYNC_FILE" />-->
+            <appender-ref ref="FILE_ERROR" />
+            <appender-ref ref="LOGSTASH" />
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+<!--        <logger name="org.springframework" level="WARN" />-->
+<!--        <logger name="com.alibaba.nacos.client.naming" level="WARN" />-->
+<!--        <logger name="pers.wwz.study" level="info" />-->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+<!--            <appender-ref ref="ASYNC_FILE" />-->
+            <appender-ref ref="FILE_ERROR" />
+            <appender-ref ref="LOGSTASH" />
+        </root>
+    </springProfile>
+
+    <springProfile name="local">
+<!--        <logger name="com.alibaba.cloud.nacos.client" level="debug" />-->
+<!--        <logger name="pers.wwz.study" level="debug" />-->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+<!--            <appender-ref ref="ASYNC_FILE" />-->
+<!--            <appender-ref ref="FILE_ERROR" />-->
+            <appender-ref ref="LOGSTASH" />
+        </root>
+    </springProfile>
+</configuration>
